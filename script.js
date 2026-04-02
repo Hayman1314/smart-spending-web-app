@@ -1,5 +1,3 @@
-// script.js
-
 // Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyDSc0Ge5nLEDVGwdHuRKBC6rdhxD-oDMOk",
@@ -39,17 +37,14 @@ document.getElementById("registerBtn").onclick = () => {
       database.ref("users/" + uid).set({ name, email, balance, limit });
       document.getElementById("auth-msg").innerText =
         "✅ Registered! Now login.";
-
-      // Clear input fields after registration
-      document.getElementById("email").value = "";
-      document.getElementById("password").value = "";
-      document.getElementById("name").value = "";
-      document.getElementById("balance").value = "";
-      document.getElementById("limit").value = "";
+      // Clear inputs
+      ["email", "password", "name", "balance", "limit"].forEach(
+        (id) => (document.getElementById(id).value = ""),
+      );
     })
     .catch((err) => {
-      console.error(err);
       document.getElementById("auth-msg").innerText = err.message;
+      console.error(err);
     });
 };
 
@@ -78,8 +73,8 @@ document.getElementById("loginBtn").onclick = () => {
         });
     })
     .catch((err) => {
-      console.error(err);
       document.getElementById("auth-msg").innerText = err.message;
+      console.error(err);
     });
 };
 
@@ -106,9 +101,7 @@ function loadExpenses(uid) {
     .once("value")
     .then((snap) => {
       let total = 0;
-      snap.forEach((child) => {
-        total += parseFloat(child.val().amount);
-      });
+      snap.forEach((child) => (total += parseFloat(child.val().amount)));
       document.getElementById("spent-display").innerText = total;
     });
 }
@@ -155,6 +148,7 @@ document.getElementById("addBtn").onclick = () => {
 // ----------------------
 // LOGOUT
 // ----------------------
+// Add this in your HTML: <button id="logoutBtn">Logout</button>
 document.getElementById("logoutBtn").onclick = () => {
   auth.signOut().then(() => {
     document.getElementById("auth").style.display = "block";
@@ -174,8 +168,5 @@ auth.onAuthStateChanged((user) => {
       .then((snap) => {
         startApp(user.uid, snap.val());
       });
-  } else {
-    document.getElementById("auth").style.display = "block";
-    document.getElementById("app").style.display = "none";
   }
 });
