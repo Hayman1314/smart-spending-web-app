@@ -18,7 +18,7 @@
       <button onclick="login()">Login</button>
       <button onclick="register()">Register</button>
 
-      <p id="auth-msg"></p>
+      <p id="auth-msg" style="color: red"></p>
     </div>
 
     <!-- 🧠 APP -->
@@ -45,16 +45,15 @@
         <option>Bills</option>
         <option>Other</option>
       </select>
-
       <input id="note" placeholder="Note" />
+
       <button onclick="addExpense()">Add</button>
-      <p id="msg"></p>
+      <p id="msg" style="color: green"></p>
     </div>
 
     <!-- Firebase SDK -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-      import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js";
       import { getAuth } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
       import { getDatabase } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
@@ -70,17 +69,19 @@
       };
 
       const app = initializeApp(firebaseConfig);
-      getAnalytics(app);
-      const auth = getAuth();
-      const database = getDatabase();
+      const auth = getAuth(app);
+      const database = getDatabase(app);
 
-      // Make auth & database globally available
+      // Make auth & database available globally
       window.firebaseAuth = auth;
       window.firebaseDB = database;
-      window.login = () => import("./script.js").then((m) => m.login());
-      window.register = () => import("./script.js").then((m) => m.register());
-      window.addExpense = () =>
-        import("./script.js").then((m) => m.addExpense());
+
+      // Load the modular script
+      import("./script.js").then((module) => {
+        window.register = module.register;
+        window.login = module.login;
+        window.addExpense = module.addExpense;
+      });
     </script>
   </body>
 </html>
