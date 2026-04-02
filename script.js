@@ -4,6 +4,7 @@ import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
 import {
   getDatabase,
@@ -14,7 +15,7 @@ import {
   child,
 } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
-// ------------------ FIREBASE CONFIG ------------------
+// ---------- Firebase Config ----------
 const firebaseConfig = {
   apiKey: "AIzaSyDSc0Ge5nLEDVGwdHuRKBC6rdhxD-oDMOk",
   authDomain: "smart-spending-bb90b.firebaseapp.com",
@@ -26,16 +27,12 @@ const firebaseConfig = {
   measurementId: "G-12LYN5BK61",
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const database = getDatabase(app);
 
-// ------------------ GOOGLE SHEETS CONFIG ------------------
-const googleSheetURL = "YOUR_GOOGLE_WEB_APP_URL"; // <-- Replace with your Apps Script Web App URL
-
-// ------------------ REGISTER ------------------
-export function register() {
+// ---------- REGISTER ----------
+function register() {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
   const name = document.getElementById("name").value;
@@ -59,8 +56,8 @@ export function register() {
     });
 }
 
-// ------------------ LOGIN ------------------
-export function login() {
+// ---------- LOGIN ----------
+function login() {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
@@ -84,7 +81,7 @@ export function login() {
     });
 }
 
-// ------------------ START APP ------------------
+// ---------- START APP ----------
 function startApp(uid, data) {
   document.getElementById("auth").style.display = "none";
   document.getElementById("app").style.display = "block";
@@ -96,7 +93,7 @@ function startApp(uid, data) {
   loadExpenses(uid);
 }
 
-// ------------------ LOAD EXPENSES ------------------
+// ---------- LOAD EXPENSES ----------
 function loadExpenses(uid) {
   get(child(ref(database), "expenses/" + uid)).then((snapshot) => {
     let total = 0;
@@ -109,8 +106,8 @@ function loadExpenses(uid) {
   });
 }
 
-// ------------------ ADD EXPENSE ------------------
-export function addExpense() {
+// ---------- ADD EXPENSE ----------
+function addExpense() {
   const user = auth.currentUser;
   if (!user) {
     alert("Please log in first.");
@@ -127,26 +124,23 @@ export function addExpense() {
     return;
   }
 
-  // Save to Firebase
   const newExpRef = push(ref(database, "expenses/" + user.uid));
   set(newExpRef, { amount, category, time, note }).then(() => {
     document.getElementById("msg").innerText = "✅ Saved!";
     loadExpenses(user.uid);
-
-    // Send to Google Sheets
-    fetch(googleSheetURL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: user.uid,
-        amount,
-        category,
-        time,
-        note,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => console.log("Google Sheet:", data))
-      .catch((err) => console.error("Google Sheet Error:", err));
   });
 }
+
+// ---------- EVENT LISTENERS ----------
+document.getElementById("loginBtn").addEventListener("click", login);
+document.getElementById("registerBtn").addEventListener("click", register);
+document.getElementById("addBtn").addEventListener("click", addExpense);
+
+// ---------- STAY LOGGED IN ----------
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    get(child(ref(database), "users/" + user.uid)).then((snapshot) => {
+      if (snapshot.exists()) startApp(user.uid, snapshot.val());
+    });
+  }
+});
