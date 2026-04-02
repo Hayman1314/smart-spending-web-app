@@ -1,21 +1,4 @@
-// script.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
-import {
-  getDatabase,
-  ref,
-  set,
-  push,
-  get,
-  child,
-} from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
-
-// ---------- Firebase Config ----------
+// Initialize Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDSc0Ge5nLEDVGwdHuRKBC6rdhxD-oDMOk",
   authDomain: "smart-spending-bb90b.firebaseapp.com",
@@ -27,12 +10,12 @@ const firebaseConfig = {
   measurementId: "G-12LYN5BK61",
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const database = getDatabase(app);
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const database = firebase.database();
 
-// ---------- REGISTER ----------
-function register() {
+// REGISTER
+document.getElementById("registerBtn").onclick = function () {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
   const name = document.getElementById("name").value;
@@ -40,24 +23,25 @@ function register() {
   const limit = document.getElementById("limit").value;
 
   if (!email || !password || !name || !balance || !limit) {
-    document.getElementById("auth-msg").innerText = "All fields are required!";
+    document.getElementById("auth-msg").innerText = "All fields required!";
     return;
   }
 
-  createUserWithEmailAndPassword(auth, email, password)
+  auth
+    .createUserWithEmailAndPassword(email, password)
     .then((userCredential) => {
-      const userId = userCredential.user.uid;
-      set(ref(database, "users/" + userId), { name, email, balance, limit });
+      const uid = userCredential.user.uid;
+      database.ref("users/" + uid).set({ name, email, balance, limit });
       document.getElementById("auth-msg").innerText =
         "✅ Registered! Now login.";
     })
-    .catch((error) => {
-      document.getElementById("auth-msg").innerText = error.message;
+    .catch((err) => {
+      document.getElementById("auth-msg").innerText = err.message;
     });
-}
+};
 
-// ---------- LOGIN ----------
-function login() {
+// LOGIN
+document.getElementById("loginBtn").onclick = function () {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
@@ -67,80 +51,76 @@ function login() {
     return;
   }
 
-  signInWithEmailAndPassword(auth, email, password)
+  auth
+    .signInWithEmailAndPassword(email, password)
     .then((userCredential) => {
-      const userId = userCredential.user.uid;
-      get(child(ref(database), "users/" + userId)).then((snapshot) => {
-        if (snapshot.exists()) {
-          startApp(userId, snapshot.val());
-        }
-      });
+      const uid = userCredential.user.uid;
+      database
+        .ref("users/" + uid)
+        .once("value")
+        .then((snap) => {
+          startApp(uid, snap.val());
+        });
     })
-    .catch((error) => {
-      document.getElementById("auth-msg").innerText = error.message;
+    .catch((err) => {
+      document.getElementById("auth-msg").innerText = err.message;
     });
-}
+};
 
-// ---------- START APP ----------
+// START APP
 function startApp(uid, data) {
   document.getElementById("auth").style.display = "none";
   document.getElementById("app").style.display = "block";
-
   document.getElementById("welcome").innerText = "Welcome " + data.name;
   document.getElementById("balance-display").innerText = data.balance;
   document.getElementById("limit-display").innerText = data.limit;
-
   loadExpenses(uid);
 }
 
-// ---------- LOAD EXPENSES ----------
+// LOAD EXPENSES
 function loadExpenses(uid) {
-  get(child(ref(database), "expenses/" + uid)).then((snapshot) => {
-    let total = 0;
-    if (snapshot.exists()) {
-      snapshot.forEach((childSnap) => {
-        total += parseFloat(childSnap.val().amount);
-      });
-    }
-    document.getElementById("spent-display").innerText = total;
-  });
+  database
+    .ref("expenses/" + uid)
+    .once("value")
+    .then((snap) => {
+      let total = 0;
+      snap.forEach((child) => (total += parseFloat(child.val().amount)));
+      document.getElementById("spent-display").innerText = total;
+    });
 }
 
-// ---------- ADD EXPENSE ----------
-function addExpense() {
+// ADD EXPENSE
+document.getElementById("addBtn").onclick = function () {
   const user = auth.currentUser;
   if (!user) {
-    alert("Please log in first.");
+    alert("Login first");
     return;
   }
 
   const amount = document.getElementById("amount").value;
   const category = document.getElementById("category").value;
-  const time = document.getElementById("time").value;
   const note = document.getElementById("note").value;
 
   if (!amount) {
-    alert("Amount is required!");
+    alert("Amount required");
     return;
   }
 
-  const newExpRef = push(ref(database, "expenses/" + user.uid));
-  set(newExpRef, { amount, category, time, note }).then(() => {
+  const newRef = database.ref("expenses/" + user.uid).push();
+  newRef.set({ amount, category, note }).then(() => {
     document.getElementById("msg").innerText = "✅ Saved!";
     loadExpenses(user.uid);
   });
-}
+};
 
-// ---------- EVENT LISTENERS ----------
-document.getElementById("loginBtn").addEventListener("click", login);
-document.getElementById("registerBtn").addEventListener("click", register);
-document.getElementById("addBtn").addEventListener("click", addExpense);
-
-// ---------- STAY LOGGED IN ----------
-onAuthStateChanged(auth, (user) => {
+// Stay logged in
+auth.onAuthStateChanged((user) => {
   if (user) {
-    get(child(ref(database), "users/" + user.uid)).then((snapshot) => {
-      if (snapshot.exists()) startApp(user.uid, snapshot.val());
-    });
+    database
+      .ref("users/" + user.uid)
+      .once("value")
+      .then((snap) => {
+        startApp(user.uid, snap.val());
+      });
   }
 });
