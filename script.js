@@ -1,50 +1,79 @@
-const URL =
-  "https://script.google.com/macros/s/AKfycbw7MGcOViKUA4FC4R7WiI3omZQo9SyPHEqbEGOOJAoPhfwJyj7Q4d_C8wJByrj-_khaOg/exec";
+// Access Firebase from window
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  child,
+  push,
+} from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+const auth = window.firebaseAuth;
+const db = window.firebaseDB;
 let currentUser = null;
 
-// LOGIN
-function login() {
-  const email = document.getElementById("email").value;
-
-  fetch(URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "login", email }),
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      if (data.status === "found") {
-        startApp(email, data);
-      } else {
-        document.getElementById("auth-msg").innerText =
-          "User not found. Please register.";
-      }
-    })
-    .catch((err) => console.error(err));
-}
-
 // REGISTER
-function register() {
+export function register() {
   const email = document.getElementById("email").value;
+  const password = "defaultPassword"; // Simple password since you didn’t collect one
   const name = document.getElementById("name").value;
   const balance = document.getElementById("balance").value;
   const limit = document.getElementById("limit").value;
 
-  fetch(URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "register", email, name, balance, limit }),
-  })
-    .then((res) => res.json())
-    .then(() => {
+  createUserWithEmailAndPassword(auth, email, password)
+    .then((userCredential) => {
+      currentUser = userCredential.user;
+
+      // Save user info in Realtime Database
+      set(ref(db, "users/" + currentUser.uid), {
+        name,
+        email,
+        balance,
+        limit,
+      });
+
       document.getElementById("auth-msg").innerText = "Registered! Now login.";
     })
-    .catch((err) => console.error(err));
+    .catch((error) => {
+      document.getElementById("auth-msg").innerText = error.message;
+      console.error(error);
+    });
+}
+
+// LOGIN
+export function login() {
+  const email = document.getElementById("email").value;
+  const password = "defaultPassword"; // Same default
+
+  signInWithEmailAndPassword(auth, email, password)
+    .then((userCredential) => {
+      currentUser = userCredential.user;
+
+      // Get user info from database
+      get(child(ref(db), "users/" + currentUser.uid)).then((snapshot) => {
+        if (snapshot.exists()) {
+          startApp(currentUser.uid, snapshot.val());
+        } else {
+          document.getElementById("auth-msg").innerText =
+            "User data not found.";
+        }
+      });
+    })
+    .catch((error) => {
+      document.getElementById("auth-msg").innerText = error.message;
+      console.error(error);
+    });
 }
 
 // START APP
-function startApp(email, data) {
-  currentUser = email;
+function startApp(uid, data) {
+  currentUser = uid;
+
   document.getElementById("auth").style.display = "none";
   document.getElementById("app").style.display = "block";
 
@@ -54,25 +83,25 @@ function startApp(email, data) {
 }
 
 // ADD EXPENSE
-function addExpense() {
+export function addExpense() {
   const amount = document.getElementById("amount").value;
   const category = document.getElementById("category").value;
   const time = document.getElementById("time").value;
   const note = document.getElementById("note").value;
 
-  fetch(URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "addExpense",
-      email: currentUser,
-      amount,
-      category,
-      time,
-      note,
-    }),
+  if (!currentUser) {
+    alert("Please login first!");
+    return;
+  }
+
+  const expenseRef = push(ref(db, "expenses/" + currentUser));
+  set(expenseRef, {
+    amount,
+    category,
+    time,
+    note,
+    timestamp: Date.now(),
   })
-    .then((res) => res.json())
     .then(() => {
       document.getElementById("msg").innerText = "✅ Saved!";
     })

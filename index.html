@@ -51,7 +51,37 @@
       <button onclick="addExpense()">Add</button>
       <p id="msg"></p>
     </div>
+    <!-- Your HTML content here -->
 
-    <script src="script.js"></script>
+    <!-- Firebase SDK (Add at the bottom of body, before script.js) -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js";
+      import { getAuth } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+      import { getDatabase } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDSc0Ge5nLEDVGwdHuRKBC6rdhxD-oDMOk",
+        authDomain: "smart-spending-bb90b.firebaseapp.com",
+        databaseURL: "https://smart-spending-bb90b-default-rtdb.firebaseio.com",
+        projectId: "smart-spending-bb90b",
+        storageBucket: "smart-spending-bb90b.appspot.com",
+        messagingSenderId: "945186984022",
+        appId: "1:945186984022:web:243709af5ee45b02616bf7",
+        measurementId: "G-12LYN5BK61",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const analytics = getAnalytics(app);
+      const auth = getAuth();
+      const database = getDatabase();
+
+      // Make auth & database globally available to script.js
+      window.firebaseAuth = auth;
+      window.firebaseDB = database;
+    </script>
+
+    <!-- Your custom JS -->
+    <script type="module" src="script.js"></script>
   </body>
 </html>
