@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Spend Wise</title>
+  </head>
+  <body>
+    <!-- 🔐 AUTH -->
+    <div id="auth">
+      <h1>Spend Wise</h1>
+
+      <input id="email" placeholder="Email" />
+      <input id="name" placeholder="Name (for new users)" />
+      <input id="balance" placeholder="Starting Balance" />
+      <input id="limit" placeholder="Monthly Limit" />
+
+      <button onclick="login()">Login</button>
+      <button onclick="register()">Register</button>
+
+      <p id="auth-msg"></p>
+    </div>
+
+    <!-- 🧠 APP -->
+    <div id="app" style="display: none">
+      <h2 id="welcome"></h2>
+
+      <!-- 📊 DASHBOARD -->
+      <div>
+        <h3>Dashboard</h3>
+        <p>Balance: <span id="balance-display"></span></p>
+        <p>Monthly Limit: <span id="limit-display"></span></p>
+        <p>Total Spent: <span id="spent-display">0</span></p>
+      </div>
+
+      <!-- 📝 CHECK-IN -->
+      <div>
+        <h3>Daily Check-In</h3>
+
+        <select id="time">
+          <option value="AM">12 AM - 12 PM</option>
+          <option value="PM">12 PM - 12 AM</option>
+        </select>
+
+        <input id="amount" placeholder="Amount" />
+
+        <select id="category">
+          <option>Food</option>
+          <option>Transport</option>
+          <option>Shopping</option>
+          <option>Bills</option>
+          <option>Other</option>
+        </select>
+
+        <input id="note" placeholder="Note" />
+
+        <button onclick="addExpense()">Add</button>
+        <p id="msg"></p>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
