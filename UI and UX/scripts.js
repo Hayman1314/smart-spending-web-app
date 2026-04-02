@@ -1,7 +1,7 @@
 const URL = "YOUR_URL";
 let currentUser = null;
 
-// 🔐 LOGIN
+// LOGIN
 function login() {
   const email = document.getElementById("email").value;
 
@@ -20,7 +20,7 @@ function login() {
     });
 }
 
-// 🆕 REGISTER
+// REGISTER
 function register() {
   const email = document.getElementById("email").value;
   const name = document.getElementById("name").value;
@@ -41,7 +41,7 @@ function register() {
   });
 }
 
-// 🚀 START APP
+// START APP
 function startApp(email, data) {
   currentUser = email;
 
@@ -55,7 +55,7 @@ function startApp(email, data) {
   document.getElementById("limit-display").innerText = data.limit;
 }
 
-// 💸 ADD EXPENSE
+// ADD EXPENSE
 function addExpense() {
   const amount = document.getElementById("amount").value;
   const category = document.getElementById("category").value;
@@ -76,3 +76,20 @@ function addExpense() {
     document.getElementById("msg").innerText = "✅ Saved!";
   });
 }
+
+// 🔔 REMINDER
+if ("Notification" in window) {
+  Notification.requestPermission();
+}
+
+setInterval(() => {
+  const hour = new Date().getHours();
+
+  if (hour === 21) {
+    if (Notification.permission === "granted") {
+      new Notification("Spend Wise Reminder", {
+        body: "Don't forget to log today's expenses!",
+      });
+    }
+  }
+}, 3600000);
