@@ -1,6 +1,5 @@
 const URL =
   "https://script.google.com/macros/s/AKfycbxyM7HOKt8YyqnaZBdN80tg3kE-NdnkGnItYvrr3v8-uMzeRknKJn1RZubP6umQ57iVMA/exec";
-
 let currentUser = null;
 
 // LOGIN
@@ -9,9 +8,7 @@ function login() {
 
   fetch(URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "login", email }),
   })
     .then((res) => res.json())
@@ -35,16 +32,8 @@ function register() {
 
   fetch(URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      action: "register",
-      email,
-      name,
-      balance,
-      limit,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "register", email, name, balance, limit }),
   })
     .then((res) => res.json())
     .then(() => {
@@ -56,14 +45,11 @@ function register() {
 // START APP
 function startApp(email, data) {
   currentUser = email;
-
   document.getElementById("auth").style.display = "none";
   document.getElementById("app").style.display = "block";
 
   document.getElementById("welcome").innerText = "Welcome " + data.name;
-
   document.getElementById("balance-display").innerText = data.balance;
-
   document.getElementById("limit-display").innerText = data.limit;
 }
 
@@ -76,9 +62,7 @@ function addExpense() {
 
   fetch(URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       action: "addExpense",
       email: currentUser,
@@ -94,20 +78,3 @@ function addExpense() {
     })
     .catch((err) => console.error(err));
 }
-
-// 🔔 REMINDER
-if ("Notification" in window) {
-  Notification.requestPermission();
-}
-
-setInterval(() => {
-  const hour = new Date().getHours();
-
-  if (hour >= 21 && hour < 22) {
-    if (Notification.permission === "granted") {
-      new Notification("Spend Wise Reminder", {
-        body: "Don't forget to log today's expenses!",
-      });
-    }
-  }
-}, 3600000);
