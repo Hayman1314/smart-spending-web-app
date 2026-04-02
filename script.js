@@ -1,10 +1,11 @@
 const URL =
-  "https://script.google.com/macros/s/AKfycby3lllMzwjTgnv-GYK7OVItYUwrdJg_owinA3WSUV8eYGyppf_2EkD7A_TyzyrTfHmjGg/exec"; // replace with your /exec URL
+  "https://script.google.com/macros/s/AKfycbw7MGcOViKUA4FC4R7WiI3omZQo9SyPHEqbEGOOJAoPhfwJyj7Q4d_C8wJByrj-_khaOg/exec";
 let currentUser = null;
 
 // LOGIN
 function login() {
   const email = document.getElementById("email").value;
+
   fetch(URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -12,10 +13,12 @@ function login() {
   })
     .then((res) => res.json())
     .then((data) => {
-      if (data.status === "found") startApp(email, data);
-      else
+      if (data.status === "found") {
+        startApp(email, data);
+      } else {
         document.getElementById("auth-msg").innerText =
           "User not found. Please register.";
+      }
     })
     .catch((err) => console.error(err));
 }
@@ -33,7 +36,7 @@ function register() {
     body: JSON.stringify({ action: "register", email, name, balance, limit }),
   })
     .then((res) => res.json())
-    .then((data) => {
+    .then(() => {
       document.getElementById("auth-msg").innerText = "Registered! Now login.";
     })
     .catch((err) => console.error(err));
@@ -44,6 +47,7 @@ function startApp(email, data) {
   currentUser = email;
   document.getElementById("auth").style.display = "none";
   document.getElementById("app").style.display = "block";
+
   document.getElementById("welcome").innerText = "Welcome " + data.name;
   document.getElementById("balance-display").innerText = data.balance;
   document.getElementById("limit-display").innerText = data.limit;
@@ -69,6 +73,8 @@ function addExpense() {
     }),
   })
     .then((res) => res.json())
-    .then(() => (document.getElementById("msg").innerText = "✅ Saved!"))
+    .then(() => {
+      document.getElementById("msg").innerText = "✅ Saved!";
+    })
     .catch((err) => console.error(err));
 }
