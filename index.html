@@ -1,76 +1,47 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Smart Spending</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        max-width: 600px;
-        margin: auto;
-        padding: 20px;
-      }
-      input,
-      select,
-      button {
-        display: block;
-        margin: 10px 0;
-        padding: 8px;
-        width: 100%;
-        max-width: 300px;
-      }
-      h1,
-      h2 {
-        margin-top: 0;
-      }
-      #app {
-        margin-top: 20px;
-      }
-    </style>
-  </head>
-  <body>
-    <!-- AUTH -->
-    <div id="auth">
-      <h1>Spend Wise</h1>
-      <input id="email" placeholder="Email" type="email" />
-      <input id="password" placeholder="Password" type="password" />
-      <input id="name" placeholder="Name (for new users)" />
-      <input id="balance" placeholder="Starting Balance" />
-      <input id="limit" placeholder="Monthly Limit" />
-      <button id="loginBtn">Login</button>
-      <button id="registerBtn">Register</button>
-      <p id="auth-msg" style="color: red"></p>
-    </div>
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Spending</title>
+</head>
+<body>
 
-    <!-- APP -->
-    <div id="app" style="display: none">
-      <h2 id="welcome"></h2>
+<div id="auth">
+  <h1>Spend Wise</h1>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <input id="name" placeholder="Name (for new users)">
+  <input id="balance" placeholder="Starting Balance">
+  <input id="limit" placeholder="Monthly Limit">
+  <button id="loginBtn">Login</button>
+  <button id="registerBtn">Register</button>
+  <p id="auth-msg" style="color:red;"></p>
+</div>
 
-      <h3>Dashboard</h3>
-      <p>Balance: <span id="balance-display"></span></p>
-      <p>Monthly Limit: <span id="limit-display"></span></p>
-      <p>Total Spent: <span id="spent-display">0</span></p>
+<div id="app" style="display:none">
+  <h2 id="welcome"></h2>
+  <p>Balance: <span id="balance-display"></span></p>
+  <p>Monthly Limit: <span id="limit-display"></span></p>
+  <p>Total Spent: <span id="spent-display">0</span></p>
 
-      <h3>Add Expense</h3>
-      <input id="amount" placeholder="Amount" type="number" />
-      <select id="category">
-        <option>Food</option>
-        <option>Transport</option>
-        <option>Shopping</option>
-        <option>Bills</option>
-        <option>Other</option>
-      </select>
-      <input id="note" placeholder="Note" />
-      <button id="addBtn">Add Expense</button>
-      <p id="msg" style="color: green"></p>
-    </div>
+  <input id="amount" placeholder="Amount">
+  <select id="category">
+    <option>Food</option>
+    <option>Transport</option>
+    <option>Shopping</option>
+    <option>Bills</option>
+    <option>Other</option>
+  </select>
+  <input id="note" placeholder="Note">
+  <button id="addBtn">Add Expense</button>
+  <p id="msg" style="color:green;"></p>
+</div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js"></script>
+<!-- Firebase v9 compat -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-    <!-- Custom JS -->
-    <script src="script.js"></script>
-  </body>
+<script src="script.js"></script>
+</body>
 </html>
