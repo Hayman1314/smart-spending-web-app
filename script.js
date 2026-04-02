@@ -1,11 +1,9 @@
 const URL =
-  "https://script.google.com/macros/s/AKfycbxyM7HOKt8YyqnaZBdN80tg3kE-NdnkGnItYvrr3v8-uMzeRknKJn1RZubP6umQ57iVMA/exec";
+  "https://script.google.com/macros/s/AKfycbz1GfBkqUiBm89qgw5Mz0ssuNzB1unBWFnjsWnsY_pX7X0jSuia63guGvnobbzLS3nj7A/exec";
 let currentUser = null;
 
-// LOGIN
 function login() {
   const email = document.getElementById("email").value;
-
   fetch(URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -13,17 +11,14 @@ function login() {
   })
     .then((res) => res.json())
     .then((data) => {
-      if (data.status === "found") {
-        startApp(email, data);
-      } else {
+      if (data.status === "found") startApp(email, data);
+      else
         document.getElementById("auth-msg").innerText =
           "User not found. Please register.";
-      }
     })
     .catch((err) => console.error(err));
 }
 
-// REGISTER
 function register() {
   const email = document.getElementById("email").value;
   const name = document.getElementById("name").value;
@@ -36,24 +31,23 @@ function register() {
     body: JSON.stringify({ action: "register", email, name, balance, limit }),
   })
     .then((res) => res.json())
-    .then(() => {
-      document.getElementById("auth-msg").innerText = "Registered! Now login.";
-    })
+    .then(
+      () =>
+        (document.getElementById("auth-msg").innerText =
+          "Registered! Now login."),
+    )
     .catch((err) => console.error(err));
 }
 
-// START APP
 function startApp(email, data) {
   currentUser = email;
   document.getElementById("auth").style.display = "none";
   document.getElementById("app").style.display = "block";
-
   document.getElementById("welcome").innerText = "Welcome " + data.name;
   document.getElementById("balance-display").innerText = data.balance;
   document.getElementById("limit-display").innerText = data.limit;
 }
 
-// ADD EXPENSE
 function addExpense() {
   const amount = document.getElementById("amount").value;
   const category = document.getElementById("category").value;
@@ -73,8 +67,6 @@ function addExpense() {
     }),
   })
     .then((res) => res.json())
-    .then(() => {
-      document.getElementById("msg").innerText = "✅ Saved!";
-    })
+    .then(() => (document.getElementById("msg").innerText = "✅ Saved!"))
     .catch((err) => console.error(err));
 }
