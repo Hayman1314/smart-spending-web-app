@@ -1,4 +1,4 @@
-// Initialize Firebase
+// ====== Firebase Config ======
 const firebaseConfig = {
   apiKey: "AIzaSyDSc0Ge5nLEDVGwdHuRKBC6rdhxD-oDMOk",
   authDomain: "smart-spending-bb90b.firebaseapp.com",
@@ -10,11 +10,12 @@ const firebaseConfig = {
   measurementId: "G-12LYN5BK61",
 };
 
+// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const database = firebase.database();
 
-// REGISTER
+// ====== REGISTER ======
 document.getElementById("registerBtn").onclick = function () {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -23,7 +24,7 @@ document.getElementById("registerBtn").onclick = function () {
   const limit = document.getElementById("limit").value;
 
   if (!email || !password || !name || !balance || !limit) {
-    document.getElementById("auth-msg").innerText = "All fields required!";
+    document.getElementById("auth-msg").innerText = "All fields are required!";
     return;
   }
 
@@ -31,16 +32,19 @@ document.getElementById("registerBtn").onclick = function () {
     .createUserWithEmailAndPassword(email, password)
     .then((userCredential) => {
       const uid = userCredential.user.uid;
+      // Save user info securely under their UID
       database.ref("users/" + uid).set({ name, email, balance, limit });
       document.getElementById("auth-msg").innerText =
         "✅ Registered! Now login.";
+      // Clear password field for security
+      document.getElementById("password").value = "";
     })
     .catch((err) => {
       document.getElementById("auth-msg").innerText = err.message;
     });
 };
 
-// LOGIN
+// ====== LOGIN ======
 document.getElementById("loginBtn").onclick = function () {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -67,33 +71,37 @@ document.getElementById("loginBtn").onclick = function () {
     });
 };
 
-// START APP
+// ====== START APP ======
 function startApp(uid, data) {
   document.getElementById("auth").style.display = "none";
   document.getElementById("app").style.display = "block";
+
   document.getElementById("welcome").innerText = "Welcome " + data.name;
   document.getElementById("balance-display").innerText = data.balance;
   document.getElementById("limit-display").innerText = data.limit;
+
   loadExpenses(uid);
 }
 
-// LOAD EXPENSES
+// ====== LOAD EXPENSES ======
 function loadExpenses(uid) {
   database
     .ref("expenses/" + uid)
     .once("value")
     .then((snap) => {
       let total = 0;
-      snap.forEach((child) => (total += parseFloat(child.val().amount)));
+      snap.forEach((child) => {
+        total += parseFloat(child.val().amount);
+      });
       document.getElementById("spent-display").innerText = total;
     });
 }
 
-// ADD EXPENSE
+// ====== ADD EXPENSE ======
 document.getElementById("addBtn").onclick = function () {
   const user = auth.currentUser;
   if (!user) {
-    alert("Login first");
+    alert("Please login first!");
     return;
   }
 
@@ -102,18 +110,21 @@ document.getElementById("addBtn").onclick = function () {
   const note = document.getElementById("note").value;
 
   if (!amount) {
-    alert("Amount required");
+    alert("Amount is required!");
     return;
   }
 
+  // Save under the user’s UID only
   const newRef = database.ref("expenses/" + user.uid).push();
   newRef.set({ amount, category, note }).then(() => {
     document.getElementById("msg").innerText = "✅ Saved!";
+    document.getElementById("amount").value = "";
+    document.getElementById("note").value = "";
     loadExpenses(user.uid);
   });
 };
 
-// Stay logged in
+// ====== AUTO LOGIN (STAY LOGGED IN) ======
 auth.onAuthStateChanged((user) => {
   if (user) {
     database
