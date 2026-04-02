@@ -1,63 +1,80 @@
 // script.js
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+} from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+import {
+  getDatabase,
+  ref,
+  set,
+  push,
+  get,
+  child,
+} from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
-// Firebase modules (global from HTML)
+// Use the global auth & database from Firebase init
 const auth = window.firebaseAuth;
-const db = window.firebaseDB;
+const database = window.firebaseDB;
 
-// REGISTER
-function register() {
+// ===== REGISTER =====
+export function register() {
   const email = document.getElementById("email").value;
   const name = document.getElementById("name").value;
   const balance = document.getElementById("balance").value;
   const limit = document.getElementById("limit").value;
-  const password = prompt("Enter a password for your account:");
+  const password = document.getElementById("password").value;
 
-  firebase
-    .auth()
-    .createUserWithEmailAndPassword(auth, email, password)
+  if (!email || !name || !balance || !limit || !password) {
+    document.getElementById("auth-msg").innerText = "All fields are required!";
+    return;
+  }
+
+  createUserWithEmailAndPassword(auth, email, password)
     .then((userCredential) => {
       const userId = userCredential.user.uid;
-      firebase
-        .database()
-        .ref(db, "users/" + userId)
-        .set({
-          name,
-          email,
-          balance,
-          limit,
-        });
-      document.getElementById("auth-msg").innerText = "Registered! Now login.";
+      set(ref(database, "users/" + userId), {
+        name,
+        email,
+        balance,
+        limit,
+      });
+      document.getElementById("auth-msg").innerText =
+        "✅ Registered! Now login.";
     })
     .catch((error) => {
       document.getElementById("auth-msg").innerText = error.message;
     });
 }
 
-// LOGIN
-function login() {
+// ===== LOGIN =====
+export function login() {
   const email = document.getElementById("email").value;
-  const password = prompt("Enter your password:");
+  const password = document.getElementById("password").value;
 
-  firebase
-    .auth()
-    .signInWithEmailAndPassword(auth, email, password)
+  if (!email || !password) {
+    document.getElementById("auth-msg").innerText =
+      "Email & password required!";
+    return;
+  }
+
+  signInWithEmailAndPassword(auth, email, password)
     .then((userCredential) => {
       const userId = userCredential.user.uid;
-      firebase
-        .database()
-        .ref(db, "users/" + userId)
-        .once("value")
-        .then((snapshot) => {
+      get(child(ref(database), "users/" + userId)).then((snapshot) => {
+        if (snapshot.exists()) {
           const data = snapshot.val();
           startApp(userId, data);
-        });
+        }
+      });
     })
     .catch((error) => {
       document.getElementById("auth-msg").innerText = error.message;
     });
 }
 
-// START APP
+// ===== START APP =====
 function startApp(uid, data) {
   document.getElementById("auth").style.display = "none";
   document.getElementById("app").style.display = "block";
@@ -69,25 +86,22 @@ function startApp(uid, data) {
   loadExpenses(uid);
 }
 
-// LOAD EXPENSES & CALCULATE TOTAL
+// ===== LOAD EXPENSES =====
 function loadExpenses(uid) {
-  firebase
-    .database()
-    .ref(db, "expenses/" + uid)
-    .once("value")
-    .then((snapshot) => {
-      let total = 0;
-      snapshot.forEach((child) => {
-        const expense = child.val();
-        total += parseFloat(expense.amount);
+  get(child(ref(database), "expenses/" + uid)).then((snapshot) => {
+    let total = 0;
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnap) => {
+        total += parseFloat(childSnap.val().amount);
       });
-      document.getElementById("spent-display").innerText = total;
-    });
+    }
+    document.getElementById("spent-display").innerText = total;
+  });
 }
 
-// ADD EXPENSE
-function addExpense() {
-  const user = firebase.auth().currentUser;
+// ===== ADD EXPENSE =====
+export function addExpense() {
+  const user = auth.currentUser;
   if (!user) {
     alert("Please log in first.");
     return;
@@ -98,11 +112,13 @@ function addExpense() {
   const time = document.getElementById("time").value;
   const note = document.getElementById("note").value;
 
-  const newExp = firebase
-    .database()
-    .ref(db, "expenses/" + user.uid)
-    .push();
-  newExp.set({ amount, category, time, note }).then(() => {
+  if (!amount) {
+    alert("Amount is required!");
+    return;
+  }
+
+  const newExpRef = push(ref(database, "expenses/" + user.uid));
+  set(newExpRef, { amount, category, time, note }).then(() => {
     document.getElementById("msg").innerText = "✅ Saved!";
     loadExpenses(user.uid);
   });

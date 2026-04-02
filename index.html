@@ -10,6 +10,7 @@
       <h1>Spend Wise</h1>
 
       <input id="email" placeholder="Email" />
+      <input id="password" type="password" placeholder="Password" />
       <input id="name" placeholder="Name (for new users)" />
       <input id="balance" placeholder="Starting Balance" />
       <input id="limit" placeholder="Monthly Limit" />
@@ -37,7 +38,6 @@
       </select>
 
       <input id="amount" placeholder="Amount" />
-
       <select id="category">
         <option>Food</option>
         <option>Transport</option>
@@ -47,13 +47,11 @@
       </select>
 
       <input id="note" placeholder="Note" />
-
       <button onclick="addExpense()">Add</button>
       <p id="msg"></p>
     </div>
-    <!-- Your HTML content here -->
 
-    <!-- Firebase SDK (Add at the bottom of body, before script.js) -->
+    <!-- Firebase SDK -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
       import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js";
@@ -72,16 +70,17 @@
       };
 
       const app = initializeApp(firebaseConfig);
-      const analytics = getAnalytics(app);
+      getAnalytics(app);
       const auth = getAuth();
       const database = getDatabase();
 
-      // Make auth & database globally available to script.js
+      // Make auth & database globally available
       window.firebaseAuth = auth;
       window.firebaseDB = database;
+      window.login = () => import("./script.js").then((m) => m.login());
+      window.register = () => import("./script.js").then((m) => m.register());
+      window.addExpense = () =>
+        import("./script.js").then((m) => m.addExpense());
     </script>
-
-    <!-- Your custom JS -->
-    <script type="module" src="script.js"></script>
   </body>
 </html>
