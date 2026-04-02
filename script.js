@@ -1,7 +1,8 @@
 const URL =
-  "https://script.google.com/macros/s/AKfycbz1GfBkqUiBm89qgw5Mz0ssuNzB1unBWFnjsWnsY_pX7X0jSuia63guGvnobbzLS3nj7A/exec";
+  "https://script.google.com/macros/s/AKfycby3lllMzwjTgnv-GYK7OVItYUwrdJg_owinA3WSUV8eYGyppf_2EkD7A_TyzyrTfHmjGg/exec"; // replace with your /exec URL
 let currentUser = null;
 
+// LOGIN
 function login() {
   const email = document.getElementById("email").value;
   fetch(URL, {
@@ -19,6 +20,7 @@ function login() {
     .catch((err) => console.error(err));
 }
 
+// REGISTER
 function register() {
   const email = document.getElementById("email").value;
   const name = document.getElementById("name").value;
@@ -31,14 +33,13 @@ function register() {
     body: JSON.stringify({ action: "register", email, name, balance, limit }),
   })
     .then((res) => res.json())
-    .then(
-      () =>
-        (document.getElementById("auth-msg").innerText =
-          "Registered! Now login."),
-    )
+    .then((data) => {
+      document.getElementById("auth-msg").innerText = "Registered! Now login.";
+    })
     .catch((err) => console.error(err));
 }
 
+// START APP
 function startApp(email, data) {
   currentUser = email;
   document.getElementById("auth").style.display = "none";
@@ -48,6 +49,7 @@ function startApp(email, data) {
   document.getElementById("limit-display").innerText = data.limit;
 }
 
+// ADD EXPENSE
 function addExpense() {
   const amount = document.getElementById("amount").value;
   const category = document.getElementById("category").value;
