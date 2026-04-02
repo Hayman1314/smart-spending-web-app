@@ -1,4 +1,6 @@
-const URL = "YOUR_URL";
+const URL =
+  "https://script.google.com/macros/s/AKfycbxyM7HOKt8YyqnaZBdN80tg3kE-NdnkGnItYvrr3v8-uMzeRknKJn1RZubP6umQ57iVMA/exec";
+
 let currentUser = null;
 
 // LOGIN
@@ -7,6 +9,9 @@ function login() {
 
   fetch(URL, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ action: "login", email }),
   })
     .then((res) => res.json())
@@ -17,7 +22,8 @@ function login() {
         document.getElementById("auth-msg").innerText =
           "User not found. Please register.";
       }
-    });
+    })
+    .catch((err) => console.error(err));
 }
 
 // REGISTER
@@ -29,6 +35,9 @@ function register() {
 
   fetch(URL, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
       action: "register",
       email,
@@ -36,9 +45,12 @@ function register() {
       balance,
       limit,
     }),
-  }).then(() => {
-    document.getElementById("auth-msg").innerText = "Registered! Now login.";
-  });
+  })
+    .then((res) => res.json())
+    .then(() => {
+      document.getElementById("auth-msg").innerText = "Registered! Now login.";
+    })
+    .catch((err) => console.error(err));
 }
 
 // START APP
@@ -64,6 +76,9 @@ function addExpense() {
 
   fetch(URL, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
       action: "addExpense",
       email: currentUser,
@@ -72,9 +87,12 @@ function addExpense() {
       time,
       note,
     }),
-  }).then(() => {
-    document.getElementById("msg").innerText = "✅ Saved!";
-  });
+  })
+    .then((res) => res.json())
+    .then(() => {
+      document.getElementById("msg").innerText = "✅ Saved!";
+    })
+    .catch((err) => console.error(err));
 }
 
 // 🔔 REMINDER
@@ -85,7 +103,7 @@ if ("Notification" in window) {
 setInterval(() => {
   const hour = new Date().getHours();
 
-  if (hour === 21) {
+  if (hour >= 21 && hour < 22) {
     if (Notification.permission === "granted") {
       new Notification("Spend Wise Reminder", {
         body: "Don't forget to log today's expenses!",
