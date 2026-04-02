@@ -17,7 +17,9 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const database = firebase.database();
 
+// ----------------------
 // REGISTER
+// ----------------------
 document.getElementById("registerBtn").onclick = () => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -37,6 +39,7 @@ document.getElementById("registerBtn").onclick = () => {
       database.ref("users/" + uid).set({ name, email, balance, limit });
       document.getElementById("auth-msg").innerText =
         "✅ Registered! Now login.";
+
       // Clear input fields after registration
       document.getElementById("email").value = "";
       document.getElementById("password").value = "";
@@ -50,7 +53,9 @@ document.getElementById("registerBtn").onclick = () => {
     });
 };
 
+// ----------------------
 // LOGIN
+// ----------------------
 document.getElementById("loginBtn").onclick = () => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -78,7 +83,9 @@ document.getElementById("loginBtn").onclick = () => {
     });
 };
 
+// ----------------------
 // START APP
+// ----------------------
 function startApp(uid, data) {
   document.getElementById("auth").style.display = "none";
   document.getElementById("app").style.display = "block";
@@ -90,7 +97,9 @@ function startApp(uid, data) {
   loadExpenses(uid);
 }
 
+// ----------------------
 // LOAD EXPENSES
+// ----------------------
 function loadExpenses(uid) {
   database
     .ref("expenses/" + uid)
@@ -104,7 +113,9 @@ function loadExpenses(uid) {
     });
 }
 
+// ----------------------
 // ADD EXPENSE
+// ----------------------
 document.getElementById("addBtn").onclick = () => {
   const user = auth.currentUser;
   if (!user) {
@@ -112,7 +123,7 @@ document.getElementById("addBtn").onclick = () => {
     return;
   }
 
-  const amount = document.getElementById("amount").value;
+  const amount = parseFloat(document.getElementById("amount").value);
   const category = document.getElementById("category").value;
   const note = document.getElementById("note").value;
 
@@ -124,14 +135,37 @@ document.getElementById("addBtn").onclick = () => {
   const newRef = database.ref("expenses/" + user.uid).push();
   newRef.set({ amount, category, note }).then(() => {
     document.getElementById("msg").innerText = "✅ Saved!";
-    // Clear input fields
     document.getElementById("amount").value = "";
     document.getElementById("note").value = "";
+
+    // Update total spent
     loadExpenses(user.uid);
+
+    // Update balance
+    const balanceRef = database.ref("users/" + user.uid + "/balance");
+    balanceRef.once("value").then((snap) => {
+      const oldBalance = parseFloat(snap.val());
+      const newBalance = oldBalance - amount;
+      balanceRef.set(newBalance);
+      document.getElementById("balance-display").innerText = newBalance;
+    });
   });
 };
 
-// Stay logged in
+// ----------------------
+// LOGOUT
+// ----------------------
+document.getElementById("logoutBtn").onclick = () => {
+  auth.signOut().then(() => {
+    document.getElementById("auth").style.display = "block";
+    document.getElementById("app").style.display = "none";
+    document.getElementById("msg").innerText = "";
+  });
+};
+
+// ----------------------
+// STAY LOGGED IN
+// ----------------------
 auth.onAuthStateChanged((user) => {
   if (user) {
     database
@@ -140,5 +174,8 @@ auth.onAuthStateChanged((user) => {
       .then((snap) => {
         startApp(user.uid, snap.val());
       });
+  } else {
+    document.getElementById("auth").style.display = "block";
+    document.getElementById("app").style.display = "none";
   }
 });
