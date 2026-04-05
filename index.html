@@ -2,50 +2,649 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Smart Spending</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <title>Smart Spending - Expense Tracker</title>
+    <!-- TailwindCSS + Font Awesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Firebase SDKs -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      import {
+        getAuth,
+        signInWithEmailAndPassword,
+        createUserWithEmailAndPassword,
+        signOut,
+        onAuthStateChanged,
+      } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+      import {
+        getFirestore,
+        doc,
+        setDoc,
+        getDoc,
+        updateDoc,
+        collection,
+        addDoc,
+        query,
+        where,
+        getDocs,
+        orderBy,
+        Timestamp,
+      } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDSc0Ge5nLEDVGwdHuRKBC6rdhxD-oDMOk",
+        authDomain: "smart-spending-bb90b.firebaseapp.com",
+        databaseURL: "https://smart-spending-bb90b-default-rtdb.firebaseio.com",
+        projectId: "smart-spending-bb90b",
+        storageBucket: "smart-spending-bb90b.firebasestorage.app",
+        messagingSenderId: "945186984022",
+        appId: "1:945186984022:web:243709af5ee45b02616bf7",
+        measurementId: "G-12LYN5BK61",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      // Google Sheets Web App URL - REPLACE WITH YOUR DEPLOYED APPS SCRIPT URL
+      const GOOGLE_SHEET_URL =
+        "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+
+      // Global variables
+      let currentUser = null;
+      let currentUserData = null;
+
+      // Helper: Send to Google Sheets
+      async function sendToGoogleSheet(sheetName, data) {
+        try {
+          await fetch(`${GOOGLE_SHEET_URL}?sheet=${sheetName}`, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+        } catch (e) {
+          console.warn("Sheet sync failed", e);
+        }
+      }
+
+      // UI Elements
+      const authScreen = document.getElementById("authScreen");
+      const setupScreen = document.getElementById("setupScreen");
+      const mainApp = document.getElementById("mainApp");
+      const authTitle = document.getElementById("authTitle");
+      const authBtn = document.getElementById("authBtn");
+      const toggleAuth = document.getElementById("toggleAuth");
+      const emailInput = document.getElementById("email");
+      const passwordInput = document.getElementById("password");
+      const authError = document.getElementById("authError");
+
+      // Setup elements
+      const setupName = document.getElementById("setupName");
+      const setupMoney = document.getElementById("setupMoney");
+      const setupMonthlyLimit = document.getElementById("setupMonthlyLimit");
+      const setupIncomeOther = document.getElementById("setupIncomeOther");
+      const customIncomeDiv = document.getElementById("customIncomeDiv");
+      const setupSubmit = document.getElementById("setupSubmit");
+
+      // Main app elements
+      const userName = document.getElementById("userName");
+      const currentMoneySpan = document.getElementById("currentMoney");
+      const limitSpan = document.getElementById("limit");
+      const progressFill = document.getElementById("progressFill");
+      const reminderBanner = document.getElementById("reminderBanner");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const editMoneyBtn = document.getElementById("editMoneyBtn");
+
+      // Expense form
+      const timeSlot = document.getElementById("timeSlot");
+      const moodSelector = document.getElementById("moodSelector");
+      const energyLevel = document.getElementById("energyLevel");
+      const productivity = document.getElementById("productivity");
+      const socialInteraction = document.getElementById("socialInteraction");
+      const stepsEstimate = document.getElementById("stepsEstimate");
+      const expensesContainer = document.getElementById("expensesContainer");
+      const addExpenseBtn = document.getElementById("addExpenseBtn");
+      const submitExpenseBtn = document.getElementById("submitExpenseBtn");
+      const expenseStatus = document.getElementById("expenseStatus");
+
+      // Dashboard
+      const todayExpensesList = document.getElementById("todayExpensesList");
+      const pastEntriesList = document.getElementById("pastEntriesList");
+      const datePicker = document.getElementById("datePicker");
+      const loadPastBtn = document.getElementById("loadPastBtn");
+
+      // Auth state
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          currentUser = user;
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists()) {
+            currentUserData = userDoc.data();
+            showMainApp();
+          } else {
+            showSetup();
+          }
+        } else {
+          showAuth();
+        }
+      });
+
+      function showAuth() {
+        authScreen.classList.remove("hidden");
+        setupScreen.classList.add("hidden");
+        mainApp.classList.add("hidden");
+      }
+
+      function showSetup() {
+        authScreen.classList.add("hidden");
+        setupScreen.classList.remove("hidden");
+        mainApp.classList.add("hidden");
+      }
+
+      async function showMainApp() {
+        authScreen.classList.add("hidden");
+        setupScreen.classList.add("hidden");
+        mainApp.classList.remove("hidden");
+        userName.textContent = currentUserData.name;
+        updateDashboard();
+        checkReminders();
+        loadTodayExpenses();
+      }
+
+      async function updateDashboard() {
+        // Calculate spent this month
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const q = query(
+          collection(db, "expenses"),
+          where("userId", "==", currentUser.uid),
+          where("date", ">=", startOfMonth),
+        );
+        const snapshot = await getDocs(q);
+        let totalSpent = 0;
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.expensesArray) {
+            totalSpent += data.expensesArray.reduce(
+              (sum, e) => sum + (e.amount || 0),
+              0,
+            );
+          }
+        });
+
+        const remaining = currentUserData.currentMoney - totalSpent;
+        currentMoneySpan.textContent = remaining.toFixed(2);
+        limitSpan.textContent = currentUserData.monthlyLimit || "No limit";
+
+        if (currentUserData.monthlyLimit) {
+          const percent = (totalSpent / currentUserData.monthlyLimit) * 100;
+          progressFill.style.width = Math.min(percent, 100) + "%";
+          if (percent > 90) progressFill.classList.add("bg-red-600");
+          else if (percent > 70) progressFill.classList.add("bg-yellow-500");
+          else progressFill.classList.add("bg-green-500");
+        }
+      }
+
+      async function checkReminders() {
+        const today = new Date().toISOString().split("T")[0];
+        const q = query(
+          collection(db, "expenses"),
+          where("userId", "==", currentUser.uid),
+          where("date", "==", today),
+        );
+        const snapshot = await getDocs(q);
+        const slots = snapshot.docs.map((d) => d.data().timeSlot);
+        const hasMorning = slots.includes("12 AM – 12 PM (Morning)");
+        const hasEvening = slots.includes("12 PM – 12 AM (Evening)");
+
+        if (!hasMorning || !hasEvening) {
+          reminderBanner.classList.remove("hidden");
+          reminderBanner.innerHTML = `<div class="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-4"><p class="font-bold">⚠️ Reminder</p><p>You haven't completed both daily entries yet. Morning: ${hasMorning ? "✅" : "❌"} Evening: ${hasEvening ? "✅" : "❌"}</p></div>`;
+        } else {
+          reminderBanner.classList.add("hidden");
+        }
+      }
+
+      async function loadTodayExpenses() {
+        const today = new Date().toISOString().split("T")[0];
+        const q = query(
+          collection(db, "expenses"),
+          where("userId", "==", currentUser.uid),
+          where("date", "==", today),
+        );
+        const snapshot = await getDocs(q);
+        todayExpensesList.innerHTML = "";
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          data.expensesArray.forEach((exp) => {
+            const div = document.createElement("div");
+            div.className = "border-b py-2";
+            div.innerHTML = `<span class="font-medium">${exp.category}:</span> $${exp.amount} <span class="text-sm text-gray-500">(${data.timeSlot}) Mood: ${data.mood}/5</span>`;
+            todayExpensesList.appendChild(div);
+          });
+        });
+      }
+
+      async function loadPastEntries() {
+        const selectedDate = datePicker.value;
+        if (!selectedDate) return;
+        const q = query(
+          collection(db, "expenses"),
+          where("userId", "==", currentUser.uid),
+          where("date", "==", selectedDate),
+        );
+        const snapshot = await getDocs(q);
+        pastEntriesList.innerHTML = "";
+        if (snapshot.empty) {
+          pastEntriesList.innerHTML =
+            '<p class="text-gray-500">No entries for this date.</p>';
+          return;
+        }
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          const header = document.createElement("div");
+          header.className = "font-bold mt-2";
+          header.textContent = `${data.timeSlot} | Mood: ${data.mood}/5 | Energy: ${data.energy}/5 | Productivity: ${data.productivity}/5 | Social: ${data.social}`;
+          pastEntriesList.appendChild(header);
+          data.expensesArray.forEach((exp) => {
+            const div = document.createElement("div");
+            div.className = "ml-4 text-sm";
+            div.innerHTML = `${exp.category}: $${exp.amount}`;
+            pastEntriesList.appendChild(div);
+          });
+        });
+      }
+
+      function addExpenseRow(category = "Food", amount = "") {
+        const row = document.createElement("div");
+        row.className = "flex gap-2 mb-2 items-center";
+        row.innerHTML = `
+                <select class="expense-category border rounded p-1 flex-1">
+                    <option value="Food" ${category === "Food" ? "selected" : ""}>Food</option>
+                    <option value="Transport" ${category === "Transport" ? "selected" : ""}>Transport</option>
+                    <option value="Housing" ${category === "Housing" ? "selected" : ""}>Housing</option>
+                    <option value="Utilities" ${category === "Utilities" ? "selected" : ""}>Utilities</option>
+                    <option value="Healthcare" ${category === "Healthcare" ? "selected" : ""}>Healthcare</option>
+                    <option value="Education" ${category === "Education" ? "selected" : ""}>Education</option>
+                    <option value="Entertainment" ${category === "Entertainment" ? "selected" : ""}>Entertainment</option>
+                    <option value="Shopping" ${category === "Shopping" ? "selected" : ""}>Shopping</option>
+                    <option value="Insurance" ${category === "Insurance" ? "selected" : ""}>Insurance</option>
+                    <option value="Savings" ${category === "Savings" ? "selected" : ""}>Savings</option>
+                    <option value="Debt" ${category === "Debt" ? "selected" : ""}>Debt</option>
+                    <option value="Gifts" ${category === "Gifts" ? "selected" : ""}>Gifts</option>
+                    <option value="Travel" ${category === "Travel" ? "selected" : ""}>Travel</option>
+                    <option value="Pet" ${category === "Pet" ? "selected" : ""}>Pet</option>
+                    <option value="Childcare" ${category === "Childcare" ? "selected" : ""}>Childcare</option>
+                    <option value="Other" ${category === "Other" ? "selected" : ""}>Other</option>
+                </select>
+                <input type="number" class="expense-amount border rounded p-1 w-28" placeholder="Amount" value="${amount}" step="0.01">
+                <button class="remove-expense text-red-500"><i class="fas fa-trash"></i></button>
+            `;
+        row
+          .querySelector(".remove-expense")
+          .addEventListener("click", () => row.remove());
+        expensesContainer.appendChild(row);
+      }
+
+      // Event Listeners
+      toggleAuth.addEventListener("click", () => {
+        if (authTitle.textContent === "Login") {
+          authTitle.textContent = "Sign Up";
+          authBtn.textContent = "Sign Up";
+          toggleAuth.textContent = "Already have an account? Login";
+        } else {
+          authTitle.textContent = "Login";
+          authBtn.textContent = "Login";
+          toggleAuth.textContent = "Need an account? Sign Up";
+        }
+      });
+
+      authBtn.addEventListener("click", async () => {
+        const email = emailInput.value;
+        const password = passwordInput.value;
+        authError.textContent = "";
+        try {
+          if (authTitle.textContent === "Login") {
+            await signInWithEmailAndPassword(auth, email, password);
+          } else {
+            await createUserWithEmailAndPassword(auth, email, password);
+          }
+        } catch (e) {
+          authError.textContent = e.message;
+        }
+      });
+
+      setupIncomeOther.addEventListener("change", () => {
+        customIncomeDiv.classList.toggle("hidden", !setupIncomeOther.checked);
+      });
+
+      setupSubmit.addEventListener("click", async () => {
+        const name = setupName.value.trim();
+        const currentMoney = parseFloat(setupMoney.value);
+        const monthlyLimit = parseFloat(setupMonthlyLimit.value) || null;
+        let incomeTypes = [];
+        if (document.getElementById("incomeMonthly").checked)
+          incomeTypes.push("Monthly income");
+        if (document.getElementById("incomePocket").checked)
+          incomeTypes.push("Pocket money");
+        if (document.getElementById("incomeOtherIncomes").checked)
+          incomeTypes.push("Other incomes");
+        if (setupIncomeOther.checked)
+          incomeTypes.push(
+            document.getElementById("customIncomeText").value || "Other",
+          );
+
+        if (!name || isNaN(currentMoney)) {
+          alert("Please fill all required fields");
+          return;
+        }
+
+        const userData = {
+          name,
+          currentMoney,
+          monthlyLimit,
+          incomeTypes,
+          email: currentUser.email,
+        };
+        await setDoc(doc(db, "users", currentUser.uid), userData);
+        await sendToGoogleSheet("Users", {
+          userId: currentUser.uid,
+          ...userData,
+          timestamp: new Date().toISOString(),
+        });
+        currentUserData = userData;
+        showMainApp();
+      });
+
+      logoutBtn.addEventListener("click", () => signOut(auth));
+
+      editMoneyBtn.addEventListener("click", async () => {
+        const newAmount = prompt(
+          "Enter new current money amount:",
+          currentUserData.currentMoney,
+        );
+        if (newAmount && !isNaN(parseFloat(newAmount))) {
+          currentUserData.currentMoney = parseFloat(newAmount);
+          await updateDoc(doc(db, "users", currentUser.uid), {
+            currentMoney: currentUserData.currentMoney,
+          });
+          updateDashboard();
+        }
+      });
+
+      addExpenseBtn.addEventListener("click", () => addExpenseRow());
+
+      submitExpenseBtn.addEventListener("click", async () => {
+        const expenses = [];
+        document.querySelectorAll("#expensesContainer > div").forEach((row) => {
+          const category = row.querySelector(".expense-category").value;
+          const amount = parseFloat(row.querySelector(".expense-amount").value);
+          if (!isNaN(amount) && amount > 0) expenses.push({ category, amount });
+        });
+
+        if (expenses.length === 0) {
+          expenseStatus.textContent = "Add at least one expense";
+          return;
+        }
+
+        const data = {
+          userId: currentUser.uid,
+          timeSlot: timeSlot.value,
+          mood: parseInt(moodSelector.value),
+          energy: parseInt(energyLevel.value),
+          productivity: parseInt(productivity.value),
+          social: socialInteraction.value,
+          steps: parseInt(stepsEstimate.value) || 0,
+          expensesArray: expenses,
+          date: new Date().toISOString().split("T")[0],
+          timestamp: Timestamp.now(),
+        };
+
+        await addDoc(collection(db, "expenses"), data);
+        await sendToGoogleSheet("Expenses", data);
+        expenseStatus.textContent = "✅ Expenses saved!";
+        expenseStatus.classList.remove("text-red-500");
+        expenseStatus.classList.add("text-green-500");
+        setTimeout(() => (expenseStatus.textContent = ""), 3000);
+        updateDashboard();
+        loadTodayExpenses();
+        checkReminders();
+      });
+
+      loadPastBtn.addEventListener("click", loadPastEntries);
+
+      // Initialize with one expense row
+      addExpenseRow();
+
+      window.addExpenseRow = addExpenseRow;
+    </script>
   </head>
-  <body>
-    <!-- AUTH DIV -->
-    <div id="auth">
-      <h1>Spend Wise</h1>
-      <input id="email" placeholder="Email" />
-      <input id="password" type="password" placeholder="Password" />
-      <input id="name" placeholder="Name (for new users)" />
-      <input id="balance" placeholder="Starting Balance" />
-      <input id="limit" placeholder="Monthly Limit" />
-      <button id="loginBtn">Login</button>
-      <button id="registerBtn">Register</button>
-      <p id="auth-msg" style="color: red"></p>
+  <body class="bg-gray-100">
+    <!-- Auth Screen -->
+    <div id="authScreen" class="min-h-screen flex items-center justify-center">
+      <div class="bg-white p-8 rounded-lg shadow-md w-96">
+        <h2 id="authTitle" class="text-2xl font-bold mb-4">Login</h2>
+        <input
+          type="email"
+          id="email"
+          placeholder="Email"
+          class="w-full p-2 border rounded mb-2"
+        />
+        <input
+          type="password"
+          id="password"
+          placeholder="Password"
+          class="w-full p-2 border rounded mb-4"
+        />
+        <button
+          id="authBtn"
+          class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
+        >
+          Login
+        </button>
+        <p id="authError" class="text-red-500 text-sm mt-2"></p>
+        <p class="mt-4 text-center">
+          <button id="toggleAuth" class="text-blue-600">
+            Need an account? Sign Up
+          </button>
+        </p>
+      </div>
     </div>
 
-    <!-- APP DIV -->
-    <div id="app" style="display: none">
-      <h2 id="welcome"></h2>
-      <p>Balance: <span id="balance-display"></span></p>
-      <p>Monthly Limit: <span id="limit-display"></span></p>
-      <p>Total Spent: <span id="spent-display">0</span></p>
+    <!-- Setup Screen -->
+    <div
+      id="setupScreen"
+      class="hidden min-h-screen flex items-center justify-center p-4"
+    >
+      <div class="bg-white p-6 rounded-lg shadow-md max-w-md w-full">
+        <h2 class="text-2xl font-bold mb-4">
+          Welcome! First, tell us about yourself
+        </h2>
+        <input
+          type="text"
+          id="setupName"
+          placeholder="Full Name"
+          class="w-full p-2 border rounded mb-2"
+          required
+        />
+        <input
+          type="number"
+          id="setupMoney"
+          placeholder="Current Money Amount ($)"
+          class="w-full p-2 border rounded mb-2"
+          step="0.01"
+          required
+        />
+        <input
+          type="number"
+          id="setupMonthlyLimit"
+          placeholder="Monthly Expense Limit (optional)"
+          class="w-full p-2 border rounded mb-2"
+          step="0.01"
+        />
 
-      <input id="amount" placeholder="Amount" />
-      <select id="category">
-        <option>Food</option>
-        <option>Transport</option>
-        <option>Shopping</option>
-        <option>Bills</option>
-        <option>Other</option>
-      </select>
-      <input id="note" placeholder="Note" />
-      <button id="addBtn">Add Expense</button>
-      <p id="msg" style="color: green"></p>
+        <p class="font-bold mt-2">Income Types:</p>
+        <label class="block"
+          ><input type="checkbox" id="incomeMonthly" /> Monthly income</label
+        >
+        <label class="block"
+          ><input type="checkbox" id="incomePocket" /> Pocket money</label
+        >
+        <label class="block"
+          ><input type="checkbox" id="incomeOtherIncomes" /> Other
+          incomes</label
+        >
+        <label class="block"
+          ><input type="checkbox" id="setupIncomeOther" /> Other
+          <input
+            type="text"
+            id="customIncomeText"
+            placeholder="Specify"
+            class="border rounded p-1 ml-2 hidden"
+        /></label>
 
-      <!-- LOGOUT BUTTON -->
-      <button id="logoutBtn">Logout</button>
+        <button
+          id="setupSubmit"
+          class="w-full bg-green-600 text-white p-2 rounded mt-4 hover:bg-green-700"
+        >
+          Start Spending Smart
+        </button>
+      </div>
     </div>
 
-    <!-- Firebase v9 compat -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- Main App -->
+    <div id="mainApp" class="hidden max-w-4xl mx-auto p-4">
+      <div class="flex justify-between items-center mb-4">
+        <h1 class="text-3xl font-bold">💰 Smart Spending</h1>
+        <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded">
+          Logout
+        </button>
+      </div>
 
-    <script src="script.js"></script>
+      <div id="reminderBanner" class="hidden"></div>
+
+      <div class="bg-white rounded-lg shadow p-4 mb-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <span class="font-bold">Welcome, <span id="userName"></span>!</span>
+          </div>
+          <div>Current Money: $<span id="currentMoney">0</span></div>
+          <button
+            id="editMoneyBtn"
+            class="bg-yellow-500 text-white px-2 py-1 rounded text-sm"
+          >
+            Edit Money
+          </button>
+        </div>
+        <div class="mt-2">Monthly Limit: $<span id="limit">—</span></div>
+        <div class="w-full bg-gray-200 rounded-full h-4 mt-2">
+          <div
+            id="progressFill"
+            class="h-4 rounded-full w-0 bg-green-500"
+          ></div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-4 mb-4">
+        <h2 class="text-xl font-bold mb-2">📝 Record Expenses</h2>
+        <select id="timeSlot" class="w-full p-2 border rounded mb-2">
+          <option value="12 AM – 12 PM (Morning)">
+            🌅 12 AM – 12 PM (Morning)
+          </option>
+          <option value="12 PM – 12 AM (Evening)">
+            🌙 12 PM – 12 AM (Evening)
+          </option>
+        </select>
+
+        <p>
+          Mood (1-5):
+          <select id="moodSelector" class="border rounded p-1">
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+            <option>4</option>
+            <option>5</option>
+          </select>
+        </p>
+        <p>
+          Energy Level (1-5):
+          <select id="energyLevel" class="border rounded p-1">
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+            <option>4</option>
+            <option>5</option>
+          </select>
+        </p>
+        <p>
+          Productivity (1-5):
+          <select id="productivity" class="border rounded p-1">
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+            <option>4</option>
+            <option>5</option>
+          </select>
+        </p>
+        <p>
+          Social Interaction:
+          <select id="socialInteraction" class="border rounded p-1">
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+        </p>
+        <p>
+          Steps Estimate:
+          <input
+            type="number"
+            id="stepsEstimate"
+            class="border rounded p-1 w-32"
+            placeholder="Steps"
+          />
+        </p>
+
+        <div class="mt-4"><strong>Expenses:</strong></div>
+        <div id="expensesContainer"></div>
+        <button
+          id="addExpenseBtn"
+          class="bg-blue-500 text-white px-3 py-1 rounded mt-2"
+        >
+          + Add Another Expense
+        </button>
+
+        <button
+          id="submitExpenseBtn"
+          class="bg-green-600 text-white w-full p-2 rounded mt-4"
+        >
+          Save Expenses
+        </button>
+        <p id="expenseStatus" class="text-sm mt-2"></p>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-4 mb-4">
+        <h2 class="text-xl font-bold">📊 Today's Expenses</h2>
+        <div id="todayExpensesList"></div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-4">
+        <h2 class="text-xl font-bold">📅 Past Entries</h2>
+        <input type="date" id="datePicker" class="border rounded p-1" />
+        <button
+          id="loadPastBtn"
+          class="bg-gray-700 text-white px-3 py-1 rounded ml-2"
+        >
+          Load
+        </button>
+        <div id="pastEntriesList" class="mt-2"></div>
+      </div>
+    </div>
   </body>
 </html>
